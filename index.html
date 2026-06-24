@@ -10,6 +10,14 @@
   <!-- CHANGE: short description for search/social previews -->
   <meta name="description" content="Sideshow is a DIY touring manager application by Neek, built alongside freakscene.diy." />
 
+  <!-- Leaflet from CDN (no build step) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
   <style>
     :root {
       --bg: #020702;
@@ -192,7 +200,32 @@
       font-size: 13px;
     }
 
+    #tour-map {
+      height: 420px;
+      max-height: 70vh;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      background: #000;
+    }
+
+    /* Keep Leaflet's default light UI legible against the dark page */
+    .leaflet-container {
+      font-family: "Courier New", Courier, monospace;
+      background: #02110a;
+    }
+
+    .leaflet-popup-content {
+      color: #000;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
     @media (max-width: 760px) {
+      #tour-map {
+        height: 320px;
+      }
+
       .grid {
         grid-template-columns: 1fr;
       }
@@ -279,11 +312,59 @@
         </div>
       </section>
 
+      <section style="margin-top: 20px;">
+        <h2>Tour route</h2>
+        <p>California run, top to bottom. Markers are stops in order; the line is the road.</p>
+        <div id="tour-map" aria-label="Map of the California tour route"></div>
+      </section>
+
       <footer>
         <!-- CHANGE: update the year or footer copy if needed -->
         © 2026 Neek · Sideshow · Built for the DIY road goblins.
       </footer>
     </main>
   </div>
+
+  <!-- Leaflet from CDN (no build step) -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    (function () {
+      // CHANGE: edit/reorder stops here — markers are plotted and connected in this order
+      var stops = [
+        { name: "Humboldt, CA",       coords: [40.8021, -124.1637] },
+        { name: "Sacramento, CA",     coords: [38.5816, -121.4944] },
+        { name: "San Francisco, CA",  coords: [37.7749, -122.4194] },
+        { name: "Santa Cruz, CA",     coords: [36.9741, -122.0308] },
+        { name: "Los Angeles, CA",    coords: [34.0522, -118.2437] },
+        { name: "San Diego, CA",      coords: [32.7157, -117.1611] }
+      ];
+
+      var map = L.map("tour-map", { scrollWheelZoom: false });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      var route = stops.map(function (s) { return s.coords; });
+
+      // Route line connecting the stops in order
+      L.polyline(route, { color: "#00ff66", weight: 3, opacity: 0.85 }).addTo(map);
+
+      // Numbered markers for each stop
+      stops.forEach(function (s, i) {
+        L.marker(s.coords)
+          .addTo(map)
+          .bindPopup((i + 1) + ". " + s.name);
+      });
+
+      // Frame the whole route, with a little breathing room
+      map.fitBounds(route, { padding: [30, 30] });
+    })();
+  </script>
 </body>
 </html>
