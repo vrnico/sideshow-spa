@@ -282,6 +282,31 @@
       color: var(--green-muted) !important;
     }
 
+    .popup-city {
+      color: var(--green-muted);
+    }
+
+    /* Permanent place-name tags on each marker */
+    .stop-label {
+      background: rgba(0, 0, 0, 0.78);
+      border: 1px solid var(--green);
+      border-radius: 0;
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      box-shadow: 0 0 8px rgba(0, 255, 102, 0.25);
+      white-space: nowrap;
+    }
+
+    /* Leaflet draws a little pointer triangle on tooltips — hide it for clean tags */
+    .stop-label::before {
+      display: none !important;
+    }
+
     @media (max-width: 760px) {
       #tour-map {
         height: 320px;
@@ -375,7 +400,7 @@
 
       <section style="margin-top: 20px;">
         <h2>Tour route</h2>
-        <p>California run, top to bottom. Markers are stops in order; the line is the road.</p>
+        <p>California run, top to bottom. Markers are stops in order; the line is the road. Tap a stop for the venue.</p>
         <div id="tour-map" aria-label="Map of the California tour route"></div>
       </section>
 
@@ -396,12 +421,36 @@
     (function () {
       // CHANGE: edit/reorder stops here — markers are plotted and connected in this order
       var stops = [
-        { name: "Humboldt, CA",       coords: [40.8021, -124.1637] },
-        { name: "Sacramento, CA",     coords: [38.5816, -121.4944] },
-        { name: "San Francisco, CA",  coords: [37.7749, -122.4194] },
-        { name: "Santa Cruz, CA",     coords: [36.9741, -122.0308] },
-        { name: "Los Angeles, CA",    coords: [34.0522, -118.2437] },
-        { name: "San Diego, CA",      coords: [32.7157, -117.1611] }
+        {
+          city: "Humboldt, CA", venue: "Outer Space Arcata",
+          note: "All-ages, 100% volunteer-run DIY music & art collective.",
+          coords: [40.8665, -124.0828]
+        },
+        {
+          city: "Sacramento, CA", venue: "Cafe Colonial",
+          note: "No-frills Stockton Blvd punk & hardcore institution.",
+          coords: [38.5536, -121.4624]
+        },
+        {
+          city: "San Francisco, CA", venue: "Bottom of the Hill",
+          note: "Legendary Potrero Hill club for touring punk.",
+          coords: [37.7654, -122.3979]
+        },
+        {
+          city: "Santa Cruz, CA", venue: "SubRosa",
+          note: "Volunteer-run DIY space & infoshop on Pacific Ave.",
+          coords: [36.9716, -122.0254]
+        },
+        {
+          city: "Los Angeles, CA", venue: "The Smell",
+          note: "All-ages, alcohol-free DIY venue in downtown LA.",
+          coords: [34.0488, -118.2470]
+        },
+        {
+          city: "San Diego, CA", venue: "The Che Cafe",
+          note: "All-ages, sober DIY co-op at UCSD since 1980.",
+          coords: [32.8773, -117.2376]
+        }
       ];
 
       var map = L.map("tour-map", { scrollWheelZoom: false });
@@ -428,11 +477,20 @@
         });
       }
 
-      // Numbered markers for each stop
+      // Numbered markers — permanent name tag, plus a popup with the venue
       stops.forEach(function (s, i) {
         L.marker(s.coords, { icon: makeIcon(14) })
           .addTo(map)
-          .bindPopup((i + 1) + ". " + s.name);
+          .bindTooltip((i + 1) + ". " + s.city, {
+            permanent: true,
+            direction: "right",
+            offset: [8, 0],
+            className: "stop-label"
+          })
+          .bindPopup(
+            '<strong>' + s.venue + '</strong>' +
+            '<span class="popup-city"> — ' + s.city + '</span><br>' + s.note
+          );
       });
 
       // Frame the whole route, with a little breathing room
