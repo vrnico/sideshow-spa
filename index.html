@@ -307,6 +307,63 @@
       display: none !important;
     }
 
+    /* Map + shows sidebar */
+    .route-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    #shows {
+      border: 1px solid var(--line);
+      background: #000;
+      padding: 14px;
+      height: 420px;
+      max-height: 70vh;
+      overflow: auto;
+    }
+
+    .shows-head {
+      color: var(--green-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .city-group {
+      margin-bottom: 16px;
+    }
+
+    .city-group h3 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .show-item {
+      border-top: 1px solid var(--line);
+      padding: 8px 0;
+      font-size: 12px;
+    }
+
+    .show-item .d {
+      color: var(--green-muted);
+    }
+
+    .show-item .v {
+      color: var(--green-dim);
+      margin-top: 2px;
+    }
+
+    .show-empty {
+      color: var(--green-muted);
+      font-size: 12px;
+    }
+
     @media (max-width: 760px) {
       #tour-map {
         height: 320px;
@@ -318,6 +375,15 @@
 
       .tiles {
         grid-template-columns: 1fr;
+      }
+
+      .route-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #shows {
+        height: auto;
+        max-height: 360px;
       }
 
       h1 {
@@ -392,7 +458,7 @@
 
         <!-- CHANGE: replace these color tiles with real screenshots or artwork -->
         <div class="tiles">
-          <div class="tile">Image / screenshot 01</div>
+          <div class="tile"><img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExbjE3czJjaHg2ejdjdHJyNXhoc3YwbTlnNHFzNnM4ZTRnanR6YzFuYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/SajdfSNg6f8rK/giphy.gif"></div>
           <div class="tile">Image / screenshot 02</div>
           <div class="tile">Image / screenshot 03</div>
         </div>
@@ -400,8 +466,13 @@
 
       <section style="margin-top: 20px;">
         <h2>Tour route</h2>
-        <p>California run, top to bottom. Markers are stops in order; the line is the road. Tap a stop for the venue.</p>
-        <div id="tour-map" aria-label="Map of the California tour route"></div>
+        <p>California run, top to bottom. Markers are stops in order; the line is the road. Tap a stop for the venue. The panel lists real shows from the Freakscene network in each city.</p>
+        <div class="route-grid">
+          <div id="tour-map" aria-label="Map of the California tour route"></div>
+          <div id="shows" aria-label="Freakscene shows in each city">
+            <div class="shows-head">&gt; loading shows from freakscene…</div>
+          </div>
+        </div>
       </section>
 
       <footer>
@@ -495,6 +566,71 @@
 
       // Frame the whole route, with a little breathing room
       map.fitBounds(route, { padding: [30, 30] });
+    })();
+  </script>
+
+  <!-- Shows panel: lists Freakscene shows for each city on the route -->
+  <script>
+    (function () {
+      // Real shows pulled from the Freakscene calendar (a saved snapshot).
+      // In production this same data comes from /api/shows — a Vercel function
+      // that calls Freakscene with a SECRET key, server-side. The snapshot is
+      // the fallback so the page always works, even with no server.
+      var FALLBACK = {
+        "Sacramento, CA": [
+          { date: "2026-06-27", title: "Local Sounds Showcase", venue: "4311 Attawa Ave #300", url: "https://freakscene.diy/events/7161/" },
+          { date: "2026-06-15", title: "Sync Up Sacramento", venue: "1819 E St", url: "https://freakscene.diy/events/6613/" },
+          { date: "2026-05-02", title: "Pregnant, TV-MA, Moonlust @ Red Museum", venue: "212 15th St", url: "https://freakscene.diy/events/6606/" }
+        ],
+        "San Francisco, CA": [
+          { date: "2026-05-31", title: "Chicas de la Calle @ Thrillhouse Records", venue: "Thrillhouse Records, Mission St", url: "https://freakscene.diy/events/6947/" },
+          { date: "2026-05-17", title: "SF Powerpop Fest @ O'Reilly's Pub", venue: "1840 Haight St", url: "https://freakscene.diy/events/6835/" },
+          { date: "2026-05-03", title: "Glitches and Witches w/ Aivi & Surasshu", venue: "395 S Van Ness Ave", url: "https://freakscene.diy/events/6396/" }
+        ],
+        "Los Angeles, CA": [
+          { date: "2026-06-28", title: "Plum, Prefix, Nighttime, Lilliana Villines", venue: "Plant Material, 3024 La Paz Dr", url: "https://freakscene.diy/events/7088/" },
+          { date: "2026-06-20", title: "Gumby's Junk, Springbreeding, Ologist @ Crash Haus", venue: "6417 Whittier Blvd", url: "https://freakscene.diy/events/7145/" },
+          { date: "2026-06-12", title: "Neap, Mound, Eric Buechel", venue: "Heavy Manners Library", url: "https://freakscene.diy/events/7085/" }
+        ]
+      };
+
+      // Same city order as the map stops above.
+      var CITY_ORDER = [
+        "Humboldt, CA", "Sacramento, CA", "San Francisco, CA",
+        "Santa Cruz, CA", "Los Angeles, CA", "San Diego, CA"
+      ];
+
+      function esc(s) {
+        return String(s).replace(/[&<>"]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+        });
+      }
+
+      function render(shows) {
+        var el = document.getElementById("shows");
+        var html = '<div class="shows-head">&gt; freakscene shows on your route</div>';
+        CITY_ORDER.forEach(function (city) {
+          var list = shows[city] || [];
+          html += '<div class="city-group"><h3>' + esc(city) + "</h3>";
+          if (!list.length) {
+            html += '<div class="show-empty">no shows on file yet</div>';
+          }
+          list.forEach(function (s) {
+            html +=
+              '<div class="show-item"><div class="d">' + esc(s.date) + "</div>" +
+              '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title) + "</a>" +
+              '<div class="v">' + esc(s.venue) + "</div></div>";
+          });
+          html += "</div>";
+        });
+        el.innerHTML = html;
+      }
+
+      // Try the live API (works once deployed to Vercel); fall back to snapshot.
+      fetch("/api/shows")
+        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+        .then(render)
+        .catch(function () { render(FALLBACK); });
     })();
   </script>
 </body>
