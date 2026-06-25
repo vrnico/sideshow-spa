@@ -8,27 +8,43 @@
 // any file in /api into a live URL automatically: this becomes /api/shows.
 // -----------------------------------------------------------------------------
 
+// Where the live events feed lives. This Freakscene endpoint validates the API
+// key and returns NF Calendar events grouped by the cities on the tour route,
+// already shaped the way the page wants them.
+const FEED_URL = "https://freakscene.space/route-events.php";
+
 export default async function handler(req, res) {
   // The secret. It is NOT written in this file. It lives in:
   //   - Vercel → Settings → Environment Variables  (for the live site)
   //   - .env.local on your machine                 (for local testing, gitignored)
   const KEY = process.env.FREAKSCENE_API_KEY;
 
-  // ---- The live version (turn this on once your key is set) -----------------
-  // Because this runs on the server, the key is attached here and never reaches
-  // the browser, so it can't be stolen from the page source.
-  //
-  //   const r = await fetch("https://freakscene.space/api/...", {
-  //     headers: { "XF-Api-Key": KEY }
-  //   });
-  //   const data = await r.json();
-  //   return res.status(200).json(shapeForRoute(data));
-  // ---------------------------------------------------------------------------
+  // ---- Live version ---------------------------------------------------------
+  // Because this runs on the server, the key is attached here in the XF-Api-Key
+  // header and never reaches the browser, so it can't be stolen from page source.
+  try {
+    if (!KEY) throw new Error("FREAKSCENE_API_KEY is not set");
 
-  // ---- Workshop version -----------------------------------------------------
-  // Returns a saved snapshot of real Freakscene shows so the demo never breaks
-  // live. Same shape the live call returns. Swap in the fetch above when ready.
-  res.status(200).json(SNAPSHOT);
+    const r = await fetch(FEED_URL, {
+      headers: { "XF-Api-Key": KEY },
+      // Don't let a slow upstream hang the request forever.
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) throw new Error("Feed responded " + r.status);
+
+    const data = await r.json();
+
+    // Let browsers/CDN cache the result briefly so we don't hammer the forum.
+    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
+    return res.status(200).json(data);
+  } catch (err) {
+    // ---- Fallback -----------------------------------------------------------
+    // If the key is missing or the feed is unreachable, serve a saved snapshot
+    // of real Freakscene shows so the page never breaks. Same shape as live.
+    console.error("shows: falling back to snapshot —", err && err.message);
+    res.setHeader("Cache-Control", "s-maxage=60");
+    return res.status(200).json(SNAPSHOT);
+  }
 }
 
 const SNAPSHOT = {
